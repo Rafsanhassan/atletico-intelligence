@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from models import (
     AIVerdict,
     BackgroundCheckStatus,
@@ -16,7 +16,7 @@ from models import (
 
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str
     full_name: str
     role: UserRole
     is_active: bool = True
@@ -27,7 +27,7 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     full_name: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
@@ -88,7 +88,7 @@ class TeamBase(BaseModel):
     founded_year: Optional[int] = None
     manager: Optional[str] = None
     stadium: Optional[str] = None
-    contact_email: Optional[EmailStr] = None
+    contact_email: Optional[str] = None
     notes: Optional[str] = None
     status: TeamStatus
 
@@ -103,7 +103,7 @@ class TeamUpdate(BaseModel):
     founded_year: Optional[int] = None
     manager: Optional[str] = None
     stadium: Optional[str] = None
-    contact_email: Optional[EmailStr] = None
+    contact_email: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[TeamStatus] = None
 
