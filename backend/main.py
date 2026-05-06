@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import Base, engine, get_db
+from database import Base, SessionLocal, engine, get_db
 import models
 import schemas
 from auth import router as auth_router, get_password_hash
@@ -320,6 +320,19 @@ def seed_database(db: Session):
     ]
     db.add_all(incidents_seed)
     db.commit()
+
+
+@app.on_event("startup")
+def on_startup():
+    try:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        existing = db.query(models.User).filter(models.User.email == "admin@atletico.com").first()
+        if not existing:
+            seed_database(db)
+        db.close()
+    except Exception as e:
+        print(f"Seed error: {e}")
 
 
 _seeded = False

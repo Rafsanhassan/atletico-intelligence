@@ -46,14 +46,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    const form = new URLSearchParams();
-    form.append("username", email);
-    form.append("password", password);
-
-    const { data } = await api.post("/auth/login", form, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+    const { data } = await api.post("/auth/login", {
+      email,
+      password,
     });
 
     localStorage.setItem("ai_token", data.access_token);
