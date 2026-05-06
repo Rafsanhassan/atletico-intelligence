@@ -2,9 +2,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 
+def _is_serverless() -> bool:
+    # Cover Vercel + common serverless env flags.
+    return bool(
+        os.getenv("VERCEL") == "1"
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("VERCEL_REGION")
+        or os.getenv("NOW_REGION")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+    )
+
+
 def _default_database_url() -> str:
     # Vercel serverless FS is read-only except for `/tmp`.
-    if os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV"):
+    if _is_serverless():
         return "sqlite:////tmp/atletico.db"
     return "sqlite:///./atletico_intelligence.db"
 

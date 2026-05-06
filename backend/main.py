@@ -1,5 +1,10 @@
 from datetime import date, datetime, timedelta
 import os
+import sys
+
+# Ensure local imports work whether Vercel flattens files or preserves `backend/`.
+sys.path.insert(0, os.path.dirname(__file__))
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +17,17 @@ from routers import incidents, leagues, matches, officials, teams, users
 
 app = FastAPI(title="Atletico Intelligence API")
 
-uploads_dir = "/tmp/uploads" if (os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV")) else "uploads"
+uploads_dir = (
+    "/tmp/uploads"
+    if (
+        os.getenv("VERCEL") == "1"
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("VERCEL_REGION")
+        or os.getenv("NOW_REGION")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+    )
+    else "uploads"
+)
 os.makedirs(uploads_dir, exist_ok=True)
 app.mount("/videos", StaticFiles(directory=uploads_dir), name="videos")
 
