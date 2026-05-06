@@ -2,9 +2,6 @@ import os
 import random
 import tempfile
 
-import cv2
-import numpy as np
-from ultralytics import YOLO
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from database import get_db
@@ -20,6 +17,8 @@ _model = None
 def get_model():
     global _model
     if _model is None:
+        from ultralytics import YOLO
+
         _model = YOLO("yolov8n.pt")
     return _model
 
@@ -97,6 +96,8 @@ async def analyze_frame(
     )
 
     try:
+        import cv2
+
         cap = cv2.VideoCapture(tmp_path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         mid_frame = max(total_frames // 2, 1)
