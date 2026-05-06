@@ -37,9 +37,7 @@ class UserUpdate(BaseModel):
 class UserOut(UserBase):
     id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class LeagueBase(BaseModel):
@@ -77,9 +75,7 @@ class LeagueUpdate(BaseModel):
 class LeagueOut(LeagueBase):
     id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class TeamBase(BaseModel):
@@ -111,9 +107,7 @@ class TeamUpdate(BaseModel):
 class TeamOut(TeamBase):
     id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class MatchBase(BaseModel):
@@ -149,9 +143,7 @@ class MatchUpdate(BaseModel):
 class MatchOut(MatchBase):
     id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class IncidentBase(BaseModel):
@@ -193,9 +185,7 @@ class IncidentUpdate(BaseModel):
 class IncidentOut(IncidentBase):
     id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class OfficialBase(BaseModel):
@@ -224,9 +214,7 @@ class OfficialUpdate(BaseModel):
 
 class OfficialOut(OfficialBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class Token(BaseModel):

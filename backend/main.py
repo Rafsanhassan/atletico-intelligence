@@ -33,11 +33,28 @@ app.mount("/videos", StaticFiles(directory=uploads_dir), name="videos")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://atletico-intelligence.vercel.app",
+        "https://atletico-intelligence-git-main-rafsanhassan2001-4311s-projects.vercel.app",
+        "https://atletico-intelligence-qvm29kal2-rafsanhassan2001-4311s-projects.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "Atlético Intelligence API is running"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
 
 app.include_router(auth_router)
 app.include_router(users.router)
