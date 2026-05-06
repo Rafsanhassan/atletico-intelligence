@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import os
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -69,15 +69,20 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = authenticate_user(db, form_data.username, form_data.password)
+def login(credentials: schemas.LoginRequest, db: Session = Depends(get_db)):
+    user = authenticate_user(db, credentials.email, credentials.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     access_token = create_access_token(
         data={"sub": user.email},
         expires_delta=timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS),
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": user.role,
+        "user": user,
+    }
 
 
 @router.post("/register", response_model=schemas.UserOut)

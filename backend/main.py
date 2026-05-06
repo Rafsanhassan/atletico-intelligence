@@ -9,13 +9,21 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import Base, SessionLocal, engine
+from database import Base, engine, get_db
 import models
 import schemas
 from auth import router as auth_router, get_password_hash
 from routers import incidents, leagues, matches, officials, teams, users
 
 app = FastAPI(title="Atletico Intelligence API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+)
 
 uploads_dir = (
     "/tmp/uploads"
@@ -30,20 +38,6 @@ uploads_dir = (
 )
 os.makedirs(uploads_dir, exist_ok=True)
 app.mount("/videos", StaticFiles(directory=uploads_dir), name="videos")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://atletico-intelligence.vercel.app",
-        "https://atletico-intelligence-git-main-rafsanhassan2001-4311s-projects.vercel.app",
-        "https://atletico-intelligence-qvm29kal2-rafsanhassan2001-4311s-projects.vercel.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 @app.get("/")
@@ -65,33 +59,47 @@ app.include_router(incidents.router)
 app.include_router(officials.router)
 
 
-def seed_data(db: Session):
-    if db.query(models.User).first():
-        return
+def seed_database(db: Session):
+    admin_user = db.query(models.User).filter(models.User.email == "admin@atletico.com").first()
+    if not admin_user:
+        admin_user = models.User(
+            email="admin@atletico.com",
+            full_name="League Admin",
+            hashed_password=get_password_hash("Admin123!"),
+            role=models.UserRole.league_admin,
+            is_active=True,
+        )
+        db.add(admin_user)
 
-    admin_user = models.User(
-        email="admin@atletico.com",
-        full_name="League Admin",
-        hashed_password=get_password_hash("Admin123!"),
-        role=models.UserRole.league_admin,
-        is_active=True,
-    )
-    official_user = models.User(
-        email="official@league.com",
-        full_name="Match Official",
-        hashed_password=get_password_hash("Admin123!"),
-        role=models.UserRole.match_official,
-        is_active=True,
-    )
-    viewer_user = models.User(
-        email="viewer@northend.com",
-        full_name="Team Viewer",
-        hashed_password=get_password_hash("Admin123!"),
-        role=models.UserRole.team_viewer,
-        is_active=True,
-    )
-    db.add_all([admin_user, official_user, viewer_user])
+    official_user = db.query(models.User).filter(models.User.email == "official@league.com").first()
+    if not official_user:
+        official_user = models.User(
+            email="official@league.com",
+            full_name="Sam Rivera",
+            hashed_password=get_password_hash("Admin123!"),
+            role=models.UserRole.match_official,
+            is_active=True,
+        )
+        db.add(official_user)
+
+    viewer_user = db.query(models.User).filter(models.User.email == "viewer@northend.com").first()
+    if not viewer_user:
+        viewer_user = models.User(
+            email="viewer@northend.com",
+            full_name="Alex Chen",
+            hashed_password=get_password_hash("Admin123!"),
+            role=models.UserRole.team_viewer,
+            is_active=True,
+        )
+        db.add(viewer_user)
+
     db.commit()
+    db.refresh(admin_user)
+    db.refresh(official_user)
+    db.refresh(viewer_user)
+
+    if db.query(models.League).first():
+        return
 
     leagues = [
         models.League(
@@ -314,11 +322,20 @@ def seed_data(db: Session):
     db.commit()
 
 
-@app.on_event("startup")
-def on_startup():
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed_data(db)
-    finally:
-        db.close()
+_seeded = False
+
+
+@app.middleware("http")
+async def seed_on_startup(request, call_next):
+    global _seeded
+    if not _seeded:
+        Base.metadata.create_all(bind=engine)
+        db = next(get_db())
+        try:
+            seed_database(db)
+        except Exception:
+            pass
+        finally:
+            db.close()
+        _seeded = True
+    return await call_next(request)

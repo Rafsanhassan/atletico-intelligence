@@ -26,6 +26,11 @@ class UserCreate(UserBase):
     password: str
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 class UserUpdate(BaseModel):
     email: Optional[str] = None
     full_name: Optional[str] = None
@@ -220,3 +225,5 @@ class OfficialOut(OfficialBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    role: UserRole
+    user: UserOut
