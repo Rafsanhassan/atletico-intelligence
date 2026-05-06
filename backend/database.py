@@ -20,7 +20,8 @@ def _default_database_url() -> str:
     return "sqlite:///./atletico_intelligence.db"
 
 
-DATABASE_URL = os.getenv("DATABASE_URL", _default_database_url())
+SQLALCHEMY_DATABASE_URL = "sqlite:////tmp/atletico.db"
+DATABASE_URL = SQLALCHEMY_DATABASE_URL
 
 engine = create_engine(
     DATABASE_URL,

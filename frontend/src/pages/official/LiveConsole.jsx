@@ -39,7 +39,7 @@ export default function LiveConsole() {
     return () => URL.revokeObjectURL(videoUrl)
   }, [videoUrl])
 
-  const canAnalyze = Boolean(videoUrl) && !isAnalyzing
+  const canAnalyze = !isAnalyzing
 
   const modalTitle = useMemo(() => {
     if (!localResult) return 'Analysis'
@@ -60,12 +60,7 @@ export default function LiveConsole() {
     onPickFile(picked)
   }
 
-  const runAnalysis = async (type) => {
-    if (!videoUrl) {
-      window.alert('Please upload a video first.')
-      return
-    }
-
+  const triggerAnalysis = async (type) => {
     setApiError(null)
     setApiResult(null)
     setLocalResult(null)
@@ -79,16 +74,36 @@ export default function LiveConsole() {
     setLocalResult({ type, verdict, confidence })
 
     const incidentType = type === 'offside' ? 'offside' : 'goal_line'
+    const matchTime = '72:14'
+    const teamPlayer = type === 'offside' ? 'Riverside FC (J. Smith)' : 'North End (Defensive Line)'
 
     try {
-      const resp = await api.post('/incidents/analyze', {
-        match_id: 1,
-        incident_type: incidentType,
-        match_time: '72:14',
-        team_player: 'Riverside FC (J. Smith)',
-        description: 'Through ball, marginal call',
-      })
-      setApiResult(resp.data)
+      let result
+
+      if (file) {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('incident_type', incidentType)
+        formData.append('match_time', matchTime)
+        formData.append('team_player', teamPlayer)
+        formData.append('match_id', '1')
+
+        const response = await api.post('/incidents/analyze-frame', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        result = response.data
+      } else {
+        const response = await api.post('/incidents/analyze', {
+          match_id: 1,
+          incident_type: incidentType,
+          match_time: matchTime,
+          team_player: teamPlayer,
+          description: 'Through ball, marginal call',
+        })
+        result = response.data
+      }
+
+      setApiResult(result)
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.message || 'Failed to analyze incident'
       setApiError(msg)
@@ -183,7 +198,7 @@ export default function LiveConsole() {
         <button
           type="button"
           disabled={!canAnalyze}
-          onClick={() => runAnalysis('offside')}
+          onClick={() => triggerAnalysis('offside')}
           className="rounded-xl p-6 text-left disabled:opacity-60"
           style={{ backgroundColor: CARD, border: `2px solid ${ACCENT}` }}
         >
@@ -199,7 +214,7 @@ export default function LiveConsole() {
         <button
           type="button"
           disabled={!canAnalyze}
-          onClick={() => runAnalysis('goal')}
+          onClick={() => triggerAnalysis('goal')}
           className="rounded-xl p-6 text-left disabled:opacity-60"
           style={{ backgroundColor: CARD, border: `2px solid ${BORDER}` }}
         >
