@@ -40,6 +40,6 @@ npm run dev
 - JWT authentication flows
 - Dark themed UI with reusable components
 
-## Known limitations
+## Known limitation
 - No real video processing; video feeds are placeholders
 - AI verdicts and analytics are mocked
