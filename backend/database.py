@@ -2,7 +2,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./atletico_intelligence.db")
+def _default_database_url() -> str:
+    # Vercel serverless FS is read-only except for `/tmp`.
+    if os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV"):
+        return "sqlite:////tmp/atletico.db"
+    return "sqlite:///./atletico_intelligence.db"
+
+
+DATABASE_URL = os.getenv("DATABASE_URL", _default_database_url())
 
 engine = create_engine(
     DATABASE_URL,

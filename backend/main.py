@@ -12,8 +12,9 @@ from routers import incidents, leagues, matches, officials, teams, users
 
 app = FastAPI(title="Atletico Intelligence API")
 
-os.makedirs("uploads", exist_ok=True)
-app.mount("/videos", StaticFiles(directory="uploads"), name="videos")
+uploads_dir = "/tmp/uploads" if (os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV")) else "uploads"
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/videos", StaticFiles(directory=uploads_dir), name="videos")
 
 app.add_middleware(
     CORSMiddleware,
