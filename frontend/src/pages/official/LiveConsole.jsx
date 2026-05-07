@@ -33,6 +33,7 @@ export default function LiveConsole() {
   const [localResult, setLocalResult] = useState(null) // { type, verdict, confidence }
   const [apiResult, setApiResult] = useState(null)
   const [apiError, setApiError] = useState(null)
+  const [annotatedFrame, setAnnotatedFrame] = useState(null)
 
   useEffect(() => {
     if (!videoUrl) return
@@ -64,6 +65,7 @@ export default function LiveConsole() {
     setApiError(null)
     setApiResult(null)
     setLocalResult(null)
+    setAnnotatedFrame(null)
     setIsAnalyzing(true)
     setModalOpen(true)
 
@@ -104,6 +106,10 @@ export default function LiveConsole() {
       }
 
       setApiResult(result)
+      if (result?.annotated_frame) {
+        setAnnotatedFrame(result.annotated_frame)
+        localStorage.setItem(`annotated_frame_${result.id}`, result.annotated_frame)
+      }
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.message || 'Failed to analyze incident'
       setApiError(msg)
@@ -118,6 +124,7 @@ export default function LiveConsole() {
     setLocalResult(null)
     setApiResult(null)
     setApiError(null)
+    setAnnotatedFrame(null)
   }
 
   return (
@@ -286,6 +293,23 @@ export default function LiveConsole() {
                     </div>
                   </div>
                 ) : null}
+
+                {annotatedFrame && (
+                  <div className="mt-4">
+                    <p className="text-gray-400 text-xs mb-2 uppercase tracking-wide">
+                      AI Detection Frame
+                    </p>
+                    <img
+                      src={annotatedFrame}
+                      alt="YOLO detected frame"
+                      className="w-full rounded-lg border border-gray-700"
+                      style={{ maxHeight: '300px', objectFit: 'contain', backgroundColor: '#000' }}
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      YOLOv8 player detection · {apiResult?.players_detected || 0} players found
+                    </p>
+                  </div>
+                )}
 
                 <div className="rounded-lg p-4" style={{ backgroundColor: BG, border: `1px solid ${BORDER}` }}>
                   <p className="text-xs" style={{ color: MUTED }}>

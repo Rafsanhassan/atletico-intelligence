@@ -2,13 +2,9 @@ import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
   Camera,
-  ChevronLeft,
-  ChevronRight,
   Download,
   Lock,
   Paperclip,
-  Pause,
-  Play,
   Trash2,
 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -49,13 +45,6 @@ const goalRationale = [
 
 const profanityRegex = /\b(damn|shit|fuck|ass|crap)\b/i
 
-const formatTime = (seconds) => {
-  const total = Math.max(0, Math.floor(seconds))
-  const mins = Math.floor(total / 60)
-  const secs = String(total % 60).padStart(2, '0')
-  return `${mins}:${secs}`
-}
-
 const clampPercent = (value) => Math.min(100, Math.max(0, value))
 
 const IncidentDetail = () => {
@@ -66,10 +55,11 @@ const IncidentDetail = () => {
   const [saving, setSaving] = useState(false)
   const [noteError, setNoteError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [playbackProgress, setPlaybackProgress] = useState(0)
   const [activeTab, setActiveTab] = useState('Main Cam')
   const [fieldView, setFieldView] = useState('Top-down')
   const [toastMessage, setToastMessage] = useState('')
+  const [showAnnotated, setShowAnnotated] = useState(false)
+  const [annotatedFrame, setAnnotatedFrame] = useState(null)
 
   useEffect(() => {
     let isMounted = true
@@ -103,22 +93,20 @@ const IncidentDetail = () => {
   }, [id])
 
   useEffect(() => {
-    const totalSeconds = 12
-    const stepMs = 100
-    const step = 100 / (totalSeconds * 1000 / stepMs)
-
-    const intervalId = setInterval(() => {
-      if (document.visibilityState !== 'visible') {
-        return
-      }
-      setPlaybackProgress((prev) => {
-        const next = prev + step
-        return next >= 100 ? 0 : next
-      })
-    }, stepMs)
-
-    return () => clearInterval(intervalId)
-  }, [])
+    if (!incident?.id) {
+      setAnnotatedFrame(null)
+      setShowAnnotated(false)
+      return
+    }
+    const cached = localStorage.getItem(`annotated_frame_${incident.id}`)
+    if (cached) {
+      setAnnotatedFrame(cached)
+      setShowAnnotated(true)
+    } else {
+      setAnnotatedFrame(null)
+      setShowAnnotated(false)
+    }
+  }, [incident])
 
   const showToast = (message) => {
     setToastMessage(message)
@@ -133,10 +121,6 @@ const IncidentDetail = () => {
   const verdictText = verdict.toUpperCase()
   const description = verdictCopy[verdict] || verdictCopy.review
   const typeBadge = incident?.incident_type === 'goal_line' ? 'GL' : 'OS'
-
-  const progressSeconds = Math.round((playbackProgress / 100) * 12)
-  const progressTime = formatTime(progressSeconds)
-  const totalTime = formatTime(12)
 
   const rationaleItems = incident?.incident_type === 'goal_line' ? goalRationale : offenseRationale
 
@@ -312,37 +296,32 @@ const IncidentDetail = () => {
                   </button>
                 ))}
               </div>
-              <div className="relative mt-4 flex h-72 flex-col items-center justify-center rounded-xl bg-[#0d1117]">
-                <span className="absolute right-3 top-3 rounded-full bg-[#161b22] px-3 py-1 text-xs text-[#8b949e]">
-                  Frame #2405
-                </span>
-                <Camera size={28} className="text-[#6b7280]" />
-                <p className="mt-2 text-sm text-[#6b7280]">Stored clip playback (5-15s)</p>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <button className="rounded-lg border border-[#30363d] px-3 py-2 text-xs">
-                    <ChevronLeft size={14} />
-                  </button>
-                  <button className="rounded-lg border border-[#30363d] px-3 py-2 text-xs">
-                    <Pause size={14} />
-                  </button>
-                  <button className="rounded-lg border border-[#30363d] px-3 py-2 text-xs">
-                    <Play size={14} />
-                  </button>
-                  <button className="rounded-lg border border-[#30363d] px-3 py-2 text-xs">
-                    <ChevronRight size={14} />
-                  </button>
-                  <button className="rounded-lg border border-[#30363d] px-3 py-2 text-xs">-1f</button>
-                  <button className="rounded-lg border border-[#30363d] px-3 py-2 text-xs">+1f</button>
+              {annotatedFrame && showAnnotated ? (
+                <div className="relative mt-4 rounded-xl bg-[#0d1117] p-3">
+                  <img
+                    src={annotatedFrame}
+                    alt="YOLO Analysis Frame"
+                    className="w-full rounded-xl"
+                    style={{ maxHeight: '400px', objectFit: 'contain', backgroundColor: '#000' }}
+                  />
+                  <div className="absolute top-3 right-3 bg-black/70 rounded-lg px-3 py-1">
+                    <span className="text-teal-400 text-xs font-mono">
+                      ● YOLO Detection Active
+                    </span>
+                  </div>
+                  <div className="absolute top-3 left-3 bg-black/70 rounded-lg px-3 py-1">
+                    <span className="text-white text-xs font-mono">Frame #2405</span>
+                  </div>
                 </div>
-                <span className="text-xs text-[#8b949e]">{progressTime} / {totalTime}</span>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <div className="h-2 flex-1 rounded-full bg-[#0d1117]">
-                  <div className="h-2 rounded-full bg-[#00d4b4]" style={{ width: `${playbackProgress}%` }}></div>
+              ) : (
+                <div className="relative mt-4 flex h-72 flex-col items-center justify-center rounded-xl bg-[#0d1117]">
+                  <span className="absolute right-3 top-3 rounded-full bg-[#161b22] px-3 py-1 text-xs text-[#8b949e]">
+                    Frame #2405
+                  </span>
+                  <Camera size={28} className="text-[#6b7280]" />
+                  <p className="mt-2 text-sm text-[#6b7280]">Stored clip playback (5-15s)</p>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-5">

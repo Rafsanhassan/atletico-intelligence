@@ -96,19 +96,45 @@ async def analyze_frame(
     )
 
     try:
+        import base64
         import cv2
 
         cap = cv2.VideoCapture(tmp_path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        mid_frame = max(total_frames // 2, 1)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, mid_frame)
-        ret, frame = cap.read()
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25
+
+        # Sample 5 frames spread across the video
+        sample_points = [
+            int(total_frames * 0.25),
+            int(total_frames * 0.40),
+            int(total_frames * 0.50),
+            int(total_frames * 0.60),
+            int(total_frames * 0.75),
+        ]
+
+        best_frame = None
+        best_count = -1
+        model = get_model()
+
+        for frame_idx in sample_points:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, max(frame_idx, 1))
+            ret, f = cap.read()
+            if not ret or f is None:
+                continue
+            # Quick detection to count persons
+            r = model(f, verbose=False, classes=[0])
+            count = len(r[0].boxes) if r else 0
+            if count > best_count:
+                best_count = count
+                best_frame = f
+
         cap.release()
 
-        if not ret or frame is None:
-            raise ValueError("Could not read frame from video")
+        if best_frame is None:
+            raise ValueError("Could not read any frame from video")
 
-        model = get_model()
+        frame = best_frame
+
         results = model(frame, verbose=False)
 
         persons = []
@@ -192,6 +218,106 @@ async def analyze_frame(
                 positional_data = {"players_detected": 0, "fallback": True}
                 description = "No players detected. Fallback verdict applied."
 
+        # Draw annotations on frame copy
+        annotated = frame.copy()
+        frame_h, frame_w = annotated.shape[:2]
+
+        # Draw all detected persons as white boxes
+        for p in persons:
+            cv2.rectangle(
+                annotated,
+                (int(p["x1"]), int(p["y1"])),
+                (int(p["x2"]), int(p["y2"])),
+                (200, 200, 200), 2
+            )
+
+        if incident_type == "offside" and len(persons) >= 2:
+            # Draw last defender box in RED
+            cv2.rectangle(
+                annotated,
+                (int(last_defender["x1"]), int(last_defender["y1"])),
+                (int(last_defender["x2"]), int(last_defender["y2"])),
+                (0, 0, 255), 3
+            )
+            cv2.putText(
+                annotated, "DEF",
+                (int(last_defender["x1"]), int(last_defender["y1"]) - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2
+            )
+
+            # Draw attacker box in BLUE
+            cv2.rectangle(
+                annotated,
+                (int(attacker["x1"]), int(attacker["y1"])),
+                (int(attacker["x2"]), int(attacker["y2"])),
+                (255, 100, 0), 3
+            )
+            cv2.putText(
+                annotated, "ATT",
+                (int(attacker["x1"]), int(attacker["y1"]) - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 100, 0), 2
+            )
+
+            # Draw vertical offside line at defender's x position
+            offside_x = int(last_defender["x"])
+            cv2.line(
+                annotated,
+                (offside_x, 0),
+                (offside_x, frame_h),
+                (0, 0, 255), 2
+            )
+            # Dashed effect - draw over with black gaps
+            for y in range(0, frame_h, 20):
+                cv2.line(annotated, (offside_x, y), (offside_x, y + 10), (0, 0, 255), 2)
+
+            # Add verdict text overlay at top
+            verdict_color = (0, 255, 180) if ai_verdict == "onside" else (0, 0, 255)
+            verdict_text = f"AI Verdict: {ai_verdict.upper()}"
+            cv2.rectangle(annotated, (0, 0), (frame_w, 50), (0, 0, 0), -1)
+            cv2.putText(
+                annotated, verdict_text,
+                (15, 35),
+                cv2.FONT_HERSHEY_SIMPLEX, 1.0, verdict_color, 2
+            )
+            conf_text = f"Confidence: {round(confidence * 100)}%  |  Players detected: {num_players}"
+            cv2.putText(
+                annotated, conf_text,
+                (15, 70),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1
+            )
+
+        elif incident_type == "goal_line":
+            # Draw goal line (vertical line at 75% of frame width)
+            goal_x = int(frame_w * 0.75)
+            cv2.line(annotated, (goal_x, 0), (goal_x, frame_h), (0, 0, 255), 3)
+            cv2.putText(
+                annotated, "GOAL LINE",
+                (goal_x - 80, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2
+            )
+            # Highlight players in goal zone in green
+            for p in persons:
+                if p["x"] > frame_w * 0.7:
+                    cv2.rectangle(
+                        annotated,
+                        (int(p["x1"]), int(p["y1"])),
+                        (int(p["x2"]), int(p["y2"])),
+                        (0, 255, 0), 3
+                    )
+            # Verdict overlay
+            verdict_color = (0, 255, 180) if ai_verdict == "goal" else (0, 0, 255)
+            cv2.rectangle(annotated, (0, 0), (frame_w, 50), (0, 0, 0), -1)
+            cv2.putText(
+                annotated,
+                f"AI Verdict: {ai_verdict.upper().replace('_', ' ')}",
+                (15, 35),
+                cv2.FONT_HERSHEY_SIMPLEX, 1.0, verdict_color, 2
+            )
+
+        # Convert annotated frame to base64 JPEG
+        _, buffer = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        annotated_b64 = base64.b64encode(buffer).decode("utf-8")
+
         review_status = models.ReviewStatus.pending
         if confidence < 0.75:
             review_status = models.ReviewStatus.flagged
@@ -219,6 +345,7 @@ async def analyze_frame(
             "positional_data": positional_data,
             "detection_method": "yolov8n",
             "players_detected": num_players,
+            "annotated_frame": f"data:image/jpeg;base64,{annotated_b64}",
         }
 
     except Exception as e:
@@ -250,6 +377,7 @@ async def analyze_frame(
             **incident_dict,
             "positional_data": {},
             "detection_method": "fallback",
+            "annotated_frame": None,
         }
     finally:
         if tmp_path and os.path.exists(tmp_path):

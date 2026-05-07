@@ -1,12 +1,16 @@
 node_modules/
 dist/
+uploads/
 .env
+.env.local
+.env.production
 __pycache__/
 *.db
 venv/
 
 # Python
 *.pyc
+*.pt
 .pytest_cache/
 
 # Logs

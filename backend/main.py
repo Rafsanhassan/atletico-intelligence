@@ -25,19 +25,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-uploads_dir = (
-    "/tmp/uploads"
-    if (
-        os.getenv("VERCEL") == "1"
-        or os.getenv("VERCEL_ENV")
-        or os.getenv("VERCEL_REGION")
-        or os.getenv("NOW_REGION")
-        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
-    )
-    else "uploads"
-)
-os.makedirs(uploads_dir, exist_ok=True)
-app.mount("/videos", StaticFiles(directory=uploads_dir), name="videos")
+os.makedirs("/tmp/uploads", exist_ok=True)
+app.mount("/videos", StaticFiles(directory="/tmp/uploads"), name="videos")
 
 
 @app.get("/")
