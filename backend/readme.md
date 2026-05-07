@@ -9,15 +9,7 @@ An AI-powered soccer incident review platform that brings affordable video revie
 | Service | URL |
 |---|---|
 | Frontend | https://atletico-intelligence.vercel.app |
-| Backend API | https://your-railway-url.up.railway.app |
 
-### Default Login Credentials
-
-| Role | Email | Password |
-|---|---|---|
-| League Admin | admin@atletico.com | Admin123! |
-| Match Official | official@league.com | Admin123! |
-| Team Viewer | viewer@northend.com | Admin123! |
 
 ---
 
@@ -358,7 +350,4 @@ Set environment variable in Vercel dashboard:
 
 ---
 
-## Author
 
-**Md Rafsan Hassan**  
-Built as part of a technical assignment for Atlético Intelligence.
