@@ -19,7 +19,8 @@ def get_model():
     if _model is None:
         from ultralytics import YOLO
 
-        _model = YOLO("yolov8n.pt")
+        weights_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "yolov8n.pt"))
+        _model = YOLO(weights_path)
     return _model
 
 
